@@ -1,12 +1,332 @@
  <!DOCTYPE html>
-<html>
+<html lang="cs">
 <head>
-<title>Page Title</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Nftables Configuration Guide</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <main>
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <div class="site-header">
+                    <h1 class="site-title">Nftables Guide</h1>
+                    <p class="site-tagline">Advanced Firewall Configuration</p>
+                </div>
 
-<h1>This is a Heading</h1>
-<p>This is a paragraph.</p>
+                <hr class="separator">
 
+                <div class="toc-box">
+                    <h4>📑 Obsah dokumentace</h4>
+                    <ul>
+                        <li><a href="#overview">🎯 Cíl projektu</a></li>
+                        <li><a href="#differences">⚖️ Rozdíly Nftables vs Iptables</a></li>
+                        <li><a href="#testbed">🔬 Testovací prostředí</a></li>
+                        <li><a href="#rule-binding">🔗 Vazba pravidel</a></li>
+                        <li><a href="#counters">📊 Počítadla</a></li>
+                        <li><a href="#nat">🌐 NAT konfigurace</a>
+                            <ul>
+                                <li><a href="#snat">↗️ SNAT</a></li>
+                                <li><a href="#dnat">↙️ DNAT</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#rulesets">🗂️ Sady pravidel</a></li>
+                        <li><a href="#maps">🗺️ Mapy</a></li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h5>🛡️ Bezpečnostní info</h5>
+                    <p><strong>Nftables</strong> je součástí linuxového jádra od verze 3.13 a plně nahrazuje iptables od Debian 10+</p>
+                    <p>⚠️ Vždy testujte pravidla v izolovaném prostředí před nasazením do produkce</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="content">
+            <!-- Overview Section -->
+            <section id="overview" class="section highlight">
+                <h2>🎯 Cíl projektu</h2>
+                <p>Implementovat pokročilou konfiguraci firewallu pomocí <strong>nftables</strong> s důrazem na praktické příklady moderních technik jako jsou vazby pravidel, počítadla, NAT, strukturované sady pravidel a mapy pro efektivní správu síťového provozu.</p>
+            </section>
+
+            <!-- Differences Section -->
+            <section id="differences" class="section">
+                <h2>⚖️ Rozdíly mezi Nftables a Iptables</h2>
+                <p>Nftables je moderní náhrada za iptables, která přináší jednotné rozhraní pro IPv4, IPv6, ARP a bridge filtering; oproti iptables používá nová syntaxi založenou na tabulkách a řetězcích bez předem definované struktury, nabízí lepší výkon díky optimalizovanému kernel subsystému, podporuje dynamické aktualizace pravidel bez nutnosti přepisovat celou sadu, zavádí pokročilé struktury jako mapy a sety pro efektivní vyhledávání a umožňuje atomické operace nad pravidly.</p>
+                <ul>
+                    <li><strong>✓ Jednotná syntaxe</strong> pro všechny typy filtrování (IPv4, IPv6, ARP, bridge)</li>
+                    <li><strong>✓ Lepší výkon</strong> díky optimalizovanému jádrovému subsystému</li>
+                    <li><strong>✓ Flexibilnější struktura</strong> - volitelné tabulky a řetězce</li>
+                    <li><strong>✓ Atomické operace</strong> - pravidla lze aktualizovat bez přerušení</li>
+                    <li><strong>✓ Nativní podpora setů a map</strong> - efektivnější vyhledávání</li>
+                </ul>
+            </section>
+
+            <!-- Testbed Section -->
+            <section id="testbed" class="section">
+                <h2>🔬 Testovací prostředí</h2>
+                <p>Pro praktické testování nftables je vhodné vytvořit izolované prostředí s minimálně dvěma virtuálními stroji nebo kontejnery propojenými přes síťový bridge, přičemž jeden stroj funguje jako router/firewall s nftables a druhý jako klient; vhodné nástroje zahrnují VirtualBox, QEMU/KVM, LXC/LXD nebo Docker.</p>
+                <ul>
+                    <li>🖥️ VirtualBox / QEMU/KVM - virtuální stroje s linuxem</li>
+                    <li>📦 Docker / LXC - lehké kontejnery</li>
+                    <li>🔀 Network namespace - izolované síťové prostředí v jednom systému</li>
+                    <li>🌐 GNS3 / EVE-NG - pokročilé síťové simulace</li>
+                </ul>
+                <details>
+                    <summary>📐 Příklad topologie</summary>
+                    <pre><code>Klient (192.168.1.10) &lt;--&gt; Router/Firewall (192.168.1.1 / 10.0.0.1) &lt;--&gt; Server (10.0.0.10)</code></pre>
+                </details>
+            </section>
+
+            <!-- Rule Binding Section -->
+            <section id="rule-binding" class="section">
+                <h2>🔗 Vazba pravidel (Rule Binding)</h2>
+                <p>Vazba pravidel v nftables umožňuje dynamické přiřazování pravidel k rozhraním nebo sadám objektů pomocí symbolických proměnných, což zjednodušuje správu a umožňuje flexibilní aplikaci politik bez nutnosti duplikace pravidel pro každé rozhraní zvlášť.</p>
+                <details>
+                    <summary>💻 Příklad vazby na rozhraní</summary>
+                    <pre><code>table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+        iifname "lo" accept
+        iifname "eth0" tcp dport 22 accept
+        ct state established,related accept
+    }
+}</code></pre>
+                </details>
+                <details>
+                    <summary>💻 Příklad s definicí proměnné</summary>
+                    <pre><code>define WAN_IF = eth0
+define LAN_IF = eth1
+
+table inet filter {
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+        iifname $LAN_IF oifname $WAN_IF accept
+        iifname $WAN_IF oifname $LAN_IF ct state related,established accept
+    }
+}</code></pre>
+                </details>
+            </section>
+
+            <!-- Counters Section -->
+            <section id="counters" class="section">
+                <h2>📊 Počítadla (Counters)</h2>
+                <p>Počítadla v nftables slouží ke sledování počtu paketů a bajtů, které projdou daným pravidlem; lze je přidat ke kterémukoliv pravidlu pomocí klíčového slova 'counter' a zobrazit příkazem 'nft list ruleset' nebo resetovat pomocí 'nft reset counters'.</p>
+                <details>
+                    <summary>💻 Základní použití počítadla</summary>
+                    <pre><code>table inet filter {
+    chain input {
+        type filter hook input priority 0;
+        tcp dport 80 counter accept
+        tcp dport 443 counter accept
+    }
+}</code></pre>
+                </details>
+                <details>
+                    <summary>💻 Pojmenovaná počítadla</summary>
+                    <pre><code>table inet filter {
+    counter http_traffic {
+        packets 0 bytes 0
+    }
+    
+    chain input {
+        type filter hook input priority 0;
+        tcp dport { 80, 8080 } counter name http_traffic accept
+    }
+}</code></pre>
+                </details>
+                <p style="color: #b8c5ff; font-size: 0.95rem; margin-top: 1.5rem;"><strong>📈 Zobrazení statistik:</strong> <span class="inline-code">nft list ruleset | grep counter</span></p>
+            </section>
+
+            <!-- NAT Section -->
+            <section id="nat" class="section">
+                <h2>🌐 NAT konfigurace</h2>
+                <p>Network Address Translation (NAT) v nftables umožňuje překlad síťových adres pro směrování provozu mezi různými sítěmi; SNAT (Source NAT) mění zdrojovou IP adresu odchozích paketů, typicky při připojení privátní sítě k internetu, zatímco DNAT (Destination NAT) upravuje cílovou adresu pro přesměrování příchozích spojení na konkrétní interní servery.</p>
+                
+                <h3 id="snat">↗️ SNAT - Source NAT (Masquerading)</h3>
+                <details>
+                    <summary>💻 SNAT s masquerade</summary>
+                    <pre><code>table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority 100;
+        oifname "eth0" masquerade
+    }
+}</code></pre>
+                </details>
+                <details>
+                    <summary>💻 SNAT se statickou IP</summary>
+                    <pre><code>table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority 100;
+        oifname "eth0" snat to 203.0.113.5
+    }
+}</code></pre>
+                </details>
+
+                <h3 id="dnat">↙️ DNAT - Destination NAT (Port Forwarding)</h3>
+                <details>
+                    <summary>💻 DNAT - přesměrování portu</summary>
+                    <pre><code>table ip nat {
+    chain prerouting {
+        type nat hook prerouting priority -100;
+        iifname "eth0" tcp dport 80 dnat to 192.168.1.100:80
+        iifname "eth0" tcp dport 443 dnat to 192.168.1.100:443
+    }
+}</code></pre>
+                </details>
+                <details>
+                    <summary>💻 DNAT s rozsahem portů</summary>
+                    <pre><code>table ip nat {
+    chain prerouting {
+        type nat hook prerouting priority -100;
+        iifname "eth0" tcp dport 8000-8100 dnat to 192.168.1.50
+    }
+}</code></pre>
+                </details>
+            </section>
+
+            <!-- Rulesets Section -->
+            <section id="rulesets" class="section">
+                <h2>🗂️ Sady pravidel a struktury</h2>
+                <p>Nftables organizuje pravidla do hierarchické struktury skládající se z tabulek (tables), řetězců (chains) a pravidel (rules); každá tabulka náleží do rodiny protokolů (ip, ip6, inet, arp, bridge, netdev) a obsahuje řetězce, které se navěšují na specifické hooky v síťovém zásobníku (prerouting, input, forward, output, postrouting) s definovanou prioritou.</p>
+                <ul>
+                    <li><strong>📋 Tabulky</strong> (tables) - kontejnery pro řetězce
+                        <ul>
+                            <li>ip, ip6, inet, arp, bridge, netdev</li>
+                        </ul>
+                    </li>
+                    <li><strong>⛓️ Řetězce</strong> (chains) - sekvence pravidel
+                        <ul>
+                            <li>Base chains: připojeny k hooků (input, output, forward...)</li>
+                            <li>Regular chains: volány z jiných řetězců</li>
+                        </ul>
+                    </li>
+                    <li><strong>📝 Pravidla</strong> (rules) - akce prováděné na pakety</li>
+                </ul>
+                <details>
+                    <summary>💻 Komplexní struktura</summary>
+                    <pre><code>table inet firewall {
+    # Pomocný řetězec
+    chain allow_ssh {
+        ip saddr 192.168.1.0/24 accept
+        log prefix "SSH denied: " drop
+    }
+    
+    chain input {
+        type filter hook input priority 0; policy drop;
+        
+        # Základní pravidla
+        ct state invalid drop
+        ct state established,related accept
+        iifname "lo" accept
+        
+        # Volání pomocného řetězce
+        tcp dport 22 jump allow_ssh
+        
+        # ICMP
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+    }
+    
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+        ct state established,related accept
+    }
+    
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}</code></pre>
+                </details>
+            </section>
+
+            <!-- Maps Section -->
+            <section id="maps" class="section">
+                <h2>🗺️ Mapy (Maps)</h2>
+                <p>Mapy v nftables jsou pokročilé datové struktury typu klíč-hodnota, které umožňují efektivní vyhledávání a aplikaci různých akcí nebo hodnot na základě shody s klíčem; lze je použít například pro NAT překlady podle portů, směrování do různých řetězců podle IP adres nebo dynamické nastavení limitů, čímž značně zjednodušují správu komplexních pravidel.</p>
+                <details>
+                    <summary>💻 Mapa pro DNAT podle portu</summary>
+                    <pre><code>table ip nat {
+    map portmap {
+        type inet_service : ipv4_addr
+        elements = {
+            80 : 192.168.1.10,
+            443 : 192.168.1.10,
+            22 : 192.168.1.20,
+            3306 : 192.168.1.30
+        }
+    }
+    
+    chain prerouting {
+        type nat hook prerouting priority -100;
+        dnat to tcp dport map @portmap
+    }
+}</code></pre>
+                </details>
+                <details>
+                    <summary>💻 Mapa pro směrování do řetězců</summary>
+                    <pre><code>table inet filter {
+    chain web_traffic {
+        log prefix "WEB: " accept
+    }
+    
+    chain ssh_traffic {
+        limit rate 5/minute log prefix "SSH: "
+        accept
+    }
+    
+    map service_map {
+        type inet_service : verdict
+        elements = {
+            22 : jump ssh_traffic,
+            80 : jump web_traffic,
+            443 : jump web_traffic
+        }
+    }
+    
+    chain input {
+        type filter hook input priority 0; policy drop;
+        ct state established,related accept
+        tcp dport vmap @service_map
+    }
+}</code></pre>
+                </details>
+                <details>
+                    <summary>💻 Sety a anonymní mapy</summary>
+                    <pre><code>table inet filter {
+    set allowed_ips {
+        type ipv4_addr
+        flags interval
+        elements = { 192.168.1.0/24, 10.0.0.0/8 }
+    }
+    
+    chain input {
+        type filter hook input priority 0; policy drop;
+        ip saddr @allowed_ips tcp dport 22 accept
+        
+        # Anonymní mapa pro rate limiting
+        tcp dport { 80, 443 } limit rate over 100 mbytes/second drop
+    }
+}</code></pre>
+                </details>
+                <p style="color: #b8c5ff; font-size: 0.95rem; line-height: 1.8; margin-top: 1.5rem;">
+                    <strong>➕ Přidání prvku do mapy:</strong> <span class="inline-code">nft add element inet filter allowed_ips { 172.16.0.0/12 }</span><br>
+                    <strong>📋 Zobrazení mapy:</strong> <span class="inline-code">nft list map inet nat portmap</span>
+                </p>
+            </section>
+
+            <hr class="separator">
+
+            <div class="footer">
+                🔒 Advanced Nftables Configuration Guide | Dokumentace vytvořena pro účely síťové bezpečnosti
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
 </body>
 </html> 
