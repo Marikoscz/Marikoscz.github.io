@@ -12,7 +12,7 @@
         <aside class="sidebar">
             <div class="sidebar-content">
                 <div class="site-header" style="padding: 20px;">
-                    <h1 class="site-title">Nftables Guide</h1>
+                    <h1 class="site-title">Nftables</h1>
                     <p class="site-tagline">Advanced Firewall Configuration</p>
                 </div>
 
@@ -40,7 +40,6 @@
                 <div class="info-box">
                     <h5>🛡️ Bezpečnostní info</h5>
                     <p><strong>Nftables</strong> je součástí linuxového jádra od verze 3.13 a plně nahrazuje iptables od Debian 10+</p>
-                    <p>⚠️ Vždy testujte pravidla v izolovaném prostředí před nasazením do produkce</p>
                 </div>
             </div>
         </aside>
@@ -50,13 +49,13 @@
             <!-- Overview Section -->
             <section id="overview" class="section highlight">
                 <h2>🎯 Cíl projektu</h2>
-                <p>Implementovat pokročilou konfiguraci firewallu pomocí <strong>nftables</strong> s důrazem na praktické příklady moderních technik jako jsou vazby pravidel, počítadla, NAT, strukturované sady pravidel a mapy pro efektivní správu síťového provozu.</p>
+                <p>Implementovat pokročilou konfiguraci firewallu pomocí <strong>nftables</strong> s důrazem na praktické příklady moderních technik jako např. - rule binding, countery, NATing, rule sety a struktury, mapy.</p>
             </section>
 
             <!-- Differences Section -->
             <section id="differences" class="section">
                 <h2>⚖️ Rozdíly mezi Nftables a Iptables</h2>
-                <p>Nftables je moderní náhrada za iptables, která přináší jednotné rozhraní pro IPv4, IPv6, ARP a bridge filtering; oproti iptables používá nová syntaxi založenou na tabulkách a řetězcích bez předem definované struktury, nabízí lepší výkon díky optimalizovanému kernel subsystému, podporuje dynamické aktualizace pravidel bez nutnosti přepisovat celou sadu, zavádí pokročilé struktury jako mapy a sety pro efektivní vyhledávání a umožňuje atomické operace nad pravidly.</p>
+                <p>Nftables je moderní náhrada za iptables, která přináší jednotné rozhraní pro IPv4, IPv6, ARP a bridge filtering; oproti iptables používá novou syntaxi založenou na tabulkách a řetězcích bez předem definované struktury, nabízí lepší výkon díky optimalizovanému kernel subsystému, podporuje dynamické aktualizace pravidel bez nutnosti přepisovat celou sadu, zavádí pokročilé struktury jako mapy a sety pro efektivní vyhledávání a umožňuje atomické operace nad pravidly.</p>
                 <ul>
                     <li><strong>✓ Jednotná syntaxe</strong> pro všechny typy filtrování (IPv4, IPv6, ARP, bridge)</li>
                     <li><strong>✓ Lepší výkon</strong> díky optimalizovanému jádrovému subsystému</li>
@@ -320,10 +319,6 @@ table inet filter {
             </section>
 
             <hr class="separator">
-
-            <div class="footer">
-                🔒 Advanced Nftables Configuration Guide | Dokumentace vytvořena pro účely síťové bezpečnosti
-            </div>
         </div>
     </main>
 
