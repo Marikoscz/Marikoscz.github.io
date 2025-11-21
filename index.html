@@ -68,10 +68,10 @@
             <!-- Testbed Section -->
             <section id="testbed" class="section">
                 <h2>🔬 Testovací prostředí</h2>
-                <p>Pro praktické testování nftables je vhodné vytvořit izolované prostředí s minimálně dvěma virtuálními stroji nebo kontejnery propojenými přes síťový bridge, přičemž jeden stroj funguje jako router/firewall s nftables a druhý jako klient; vhodné nástroje zahrnují VirtualBox, QEMU/KVM, LXC/LXD nebo Docker.</p>
+                <p>Pro praktické testování nftables je vhodné vytvořit izolované prostředí s minimálně dvěma virtuálními stroji nebo kontejnery propojenými přes síťový bridge, přičemž jeden stroj funguje jako router/firewall s nftables a druhý jako klient; vhodné nástroje zahrnují VirtualBox, QEMU/KVM nebo LXC/LXD.</p>
                 <ul>
                     <li>🖥️ VirtualBox / QEMU/KVM - virtuální stroje s linuxem</li>
-                    <li>📦 Docker / LXC - lehké kontejnery</li>
+                    <li>📦 LXC/LXD - lehké kontejnery</li>
                     <li>🔀 Network namespace - izolované síťové prostředí v jednom systému</li>
                     <li>🌐 GNS3 / EVE-NG - pokročilé síťové simulace</li>
                 </ul>
@@ -87,25 +87,30 @@
                 <p>Vazba pravidel v nftables umožňuje dynamické přiřazování pravidel k rozhraním nebo sadám objektů pomocí symbolických proměnných, což zjednodušuje správu a umožňuje flexibilní aplikaci politik bez nutnosti duplikace pravidel pro každé rozhraní zvlášť.</p>
                 <details>
                     <summary>💻 Příklad vazby na rozhraní</summary>
-                    <pre><code>table inet filter {
+                    <pre><code>table ip filter {
     chain input {
-        type filter hook input priority 0; policy drop;
-        iifname "lo" accept
-        iifname "eth0" tcp dport 22 accept
-        ct state established,related accept
+            
+            type filter hook input priority filter; policy accept;
+            
+            ct state established,related accept
+            
+            iifname "lo" accept
+            iifname "eth1" icmp type echo-request accept
     }
-}</code></pre>
+}
+</code></pre>
                 </details>
                 <details>
                     <summary>💻 Příklad s definicí proměnné</summary>
-                    <pre><code>define WAN_IF = eth0
-define LAN_IF = eth1
-
+                    <pre><code>define LAN_IF = eth1
+define WAN_IF = eth0
 table inet filter {
     chain forward {
-        type filter hook forward priority 0; policy drop;
+        type filter hook forward priority filter; policy drop;
+
         iifname $LAN_IF oifname $WAN_IF accept
         iifname $WAN_IF oifname $LAN_IF ct state related,established accept
+
     }
 }</code></pre>
                 </details>
@@ -119,7 +124,7 @@ table inet filter {
                     <summary>💻 Základní použití počítadla</summary>
                     <pre><code>table inet filter {
     chain input {
-        type filter hook input priority 0;
+        type filter hook input priority filter;
         tcp dport 80 counter accept
         tcp dport 443 counter accept
     }
@@ -133,7 +138,7 @@ table inet filter {
     }
     
     chain input {
-        type filter hook input priority 0;
+        type filter hook input priority filter;
         tcp dport { 80, 8080 } counter name http_traffic accept
     }
 }</code></pre>
@@ -151,8 +156,9 @@ table inet filter {
                     <summary>💻 SNAT s masquerade</summary>
                     <pre><code>table ip nat {
     chain postrouting {
-        type nat hook postrouting priority 100;
-        oifname "eth0" masquerade
+            type nat hook postrouting priority srcnat;
+
+            oifname eth0 masquerade
     }
 }</code></pre>
                 </details>
@@ -160,7 +166,8 @@ table inet filter {
                     <summary>💻 SNAT se statickou IP</summary>
                     <pre><code>table ip nat {
     chain postrouting {
-        type nat hook postrouting priority 100;
+        type nat hook postrouting priority srcnat;
+
         oifname "eth0" snat to 203.0.113.5
     }
 }</code></pre>
@@ -171,7 +178,8 @@ table inet filter {
                     <summary>💻 DNAT - přesměrování portu</summary>
                     <pre><code>table ip nat {
     chain prerouting {
-        type nat hook prerouting priority -100;
+        type nat hook prerouting priority stnat;
+        
         iifname "eth0" tcp dport 80 dnat to 192.168.1.100:80
         iifname "eth0" tcp dport 443 dnat to 192.168.1.100:443
     }
@@ -181,7 +189,7 @@ table inet filter {
                     <summary>💻 DNAT s rozsahem portů</summary>
                     <pre><code>table ip nat {
     chain prerouting {
-        type nat hook prerouting priority -100;
+        type nat hook prerouting priority dstnat;
         iifname "eth0" tcp dport 8000-8100 dnat to 192.168.1.50
     }
 }</code></pre>
@@ -216,7 +224,7 @@ table inet filter {
     }
     
     chain input {
-        type filter hook input priority 0; policy drop;
+        type filter hook input priority filter; policy drop;
         
         # Základní pravidla
         ct state invalid drop
@@ -261,7 +269,7 @@ table inet filter {
     }
     
     chain prerouting {
-        type nat hook prerouting priority -100;
+        type nat hook prerouting priority dstnat;
         dnat to tcp dport map @portmap
     }
 }</code></pre>
@@ -288,7 +296,7 @@ table inet filter {
     }
     
     chain input {
-        type filter hook input priority 0; policy drop;
+        type filter hook input priority filter; policy drop;
         ct state established,related accept
         tcp dport vmap @service_map
     }
@@ -304,7 +312,7 @@ table inet filter {
     }
     
     chain input {
-        type filter hook input priority 0; policy drop;
+        type filter hook input priority filter; policy drop;
         ip saddr @allowed_ips tcp dport 22 accept
         
         # Anonymní mapa pro rate limiting
