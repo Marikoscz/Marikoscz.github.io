@@ -89,7 +89,6 @@
                     <summary>💻 Příklad vazby na rozhraní</summary>
                     <pre><code>table ip filter {
     chain input {
-            
             type filter hook input priority filter; policy accept;
             
             ct state established,related accept
@@ -125,6 +124,7 @@ table inet filter {
                     <pre><code>table inet filter {
     chain input {
         type filter hook input priority filter;
+
         tcp dport 80 counter accept
         tcp dport 443 counter accept
     }
@@ -139,6 +139,7 @@ table inet filter {
     
     chain input {
         type filter hook input priority filter;
+
         tcp dport { 80, 8080 } counter name http_traffic accept
     }
 }</code></pre>
@@ -156,9 +157,9 @@ table inet filter {
                     <summary>💻 SNAT s masquerade</summary>
                     <pre><code>table ip nat {
     chain postrouting {
-            type nat hook postrouting priority srcnat;
+        type nat hook postrouting priority srcnat;
 
-            oifname eth0 masquerade
+        oifname eth0 masquerade
     }
 }</code></pre>
                 </details>
@@ -190,6 +191,7 @@ table inet filter {
                     <pre><code>table ip nat {
     chain prerouting {
         type nat hook prerouting priority dstnat;
+
         iifname "eth0" tcp dport 8000-8100 dnat to 192.168.1.50
     }
 }</code></pre>
@@ -241,6 +243,7 @@ table inet filter {
     
     chain forward {
         type filter hook forward priority 0; policy drop;
+
         ct state established,related accept
     }
     
@@ -270,6 +273,7 @@ table inet filter {
     
     chain prerouting {
         type nat hook prerouting priority dstnat;
+
         dnat to tcp dport map @portmap
     }
 }</code></pre>
@@ -297,6 +301,7 @@ table inet filter {
     
     chain input {
         type filter hook input priority filter; policy drop;
+
         ct state established,related accept
         tcp dport vmap @service_map
     }
@@ -313,6 +318,7 @@ table inet filter {
     
     chain input {
         type filter hook input priority filter; policy drop;
+
         ip saddr @allowed_ips tcp dport 22 accept
         
         # Anonymní mapa pro rate limiting
